@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>CHART.JS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" media="screen" href="css/main.css" />
+  <script src="bower_components/jquery/dist/jquery.min.js"></script>
+  <script src="bower_components/chart.js/dist/chart.min.js"></script>
+</head>
+
+<body>
+  <div id="myDiv">
+    Number Of Tasks (Active or Completed)
+    <canvas id="tasksAC"></canvas>
+  </div>
+  <div id="myDiv">
+    Number Of Tasks (Planned or Backlog)
+    <canvas id="tasksPB"></canvas>
+  </div>
+  <div id="myDiv">
+    Progress Of Tasks (%)
+    <canvas id="progressTasks"></canvas>
+  </div>
+  <div id="myDiv">
+    Tasks Assigne
+    <canvas id="tasksAssigne"></canvas>
+  </div>
+  <div id="myDiv">
+    Tasks Assigne (%)
+    <canvas id="taskAssigne2"></canvas>
+  </div>
+  <div id="myDiv">
+    User Roles
+    <canvas id="userRoles"></canvas>
+  </div>
+  <script>
+    $(function(){
+      function randomRGBA() {
+        var o = Math.round, r = Math.random, s = 255;
+        return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + r().toFixed(1) + ')';
+      }
+      var activeTasks = 0;
+      var completedTasks = 0;
+      var plannedTasks = 0;
+      var backlogTasks = 0;
+      var totalTasks = 0;
+      var user = {
+        hasRoles: [],
+        hasNoRoles: 0
+      };
+      var totalUsers = 0;
+      var people = {
+        assigned: [],
+        unassigned: 0
+      };
+      
+      var chartProgressTasks = document.getElementById("progressTasks").getContext("2d");
+      var chartTasksAC = document.getElementById("tasksAC").getContext("2d");
+      var chartTasksAssigne = document.getElementById("tasksAssigne").getContext("2d");
+      var chartTasksAssigne2 = document.getElementById("taskAssigne2").getContext("2d");
+      var chartTasksPB = document.getElementById("tasksPB").getContext("2d");
+      var chartUserRoles = document.getElementById("userRoles").getContext("2d");
+
+      $.getJSON("data/json/users.json", function(result){
+        var res = result;
+        totalUsers = res.length - 1;
+
+        res.forEach(value => {
+          if (value.roles) {
+            if (user.hasRoles.indexOf(value.roles) === -1) {
+              if (typeof(user.hasRoles[value.roles]) === "undefined") {
+                user.hasRoles[value.roles] = 1;
+              } else {
+                user.hasRoles[value.roles] += 1;
+              }
+              
+            }
+          } else {
+            user.hasNoRoles += 1;
+          }
+        });
+
+        var labels = ["Total Users", "Has No Roles"];
+        var data = [totalUsers, user.hasNoRoles];
+        var colors = [randomRGBA(), randomRGBA()];
+
+        for(var name in user['hasRoles']) {
+          labels.push(name);
+          data.push(user['hasRoles'][name]);
+          colors.push(randomRGBA());
+        }
+
+        var userRoles = new Chart(chartUserRoles, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Users",
+              data: data,
+              backgroundColor: colors,
+            }]
+          }
+        });
+      });
+
+      $.getJSON("data/json/tasks.json", function(result){
+        var res = result;
+        totalTasks = res.length - 1;
+
+        res.forEach(value => {
+          if (value.authorIds__name) {
+            if (people.assigned.indexOf(value.authorIds__name) === -1) {
+              if (typeof(people.assigned[value.authorIds__name]) === "undefined") {
+                people.assigned[value.authorIds__name] = 1;
+              } else {
+                people.assigned[value.authorIds__name] += 1;
+              }
+              
+            }
+          } else {
+            people.unassigned += 1;
+          }
+
+          if (value.status === "Active") {
+            activeTasks += 1;
+          } else if (value.status === "Completed") {
+            completedTasks += 1;
+          }
+
+          if (value.dates__type === "Planned") {
+            plannedTasks += 1;
+          } else if (value.dates__type === "backlog") {
+            backlogTasks += 1;
+          }
+        });
+
+        var labels = ["Total Tasks", "Unassigned"];
+        var data = [totalTasks, people.unassigned];
+        var colors = ["rgba(0,0,255,0.5)","rgba(255,0,0,0.5)"];
+
+        for(var name in people['assigned']) {
+          labels.push(name);
+          data.push(people['assigned'][name]);
+          colors.push(randomRGBA());
+        }
+
+        var tasksAssigne = new Chart(chartTasksAssigne, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Tasks",
+              data: data,
+              backgroundColor: colors,
+            }]
+          }
+        });
+
+        people.unassigned = ((people.unassigned/totalTasks) * 100).toFixed(2);
+
+        labels = ["Unassigned"];
+        data = [people.unassigned];
+        var colors2 = ["rgba(255,0,0,0.5)"];
+
+        for(var name in people['assigned']) {
+          var count = ((people['assigned'][name]/totalTasks) * 100).toFixed(2);
+          labels.push(name);
+          data.push(count);
+          colors2.push(randomRGBA());
+        }
+
+        var taskAssigne2 = new Chart(chartTasksAssigne2, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: colors2,
+            }]
+          }
+        });
+
+        labels = ["Total Tasks", "Planned Tasks", "Backlog Tasks"];
+        data = [totalTasks, plannedTasks, backlogTasks];
+
+        var tasksPB = new Chart(chartTasksPB, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Number of Tasks",
+              data: data,
+              backgroundColor: [
+                "rgba(0,0,255,0.5)",
+                "rgba(255,0,0,0.5)",
+                "rgba(0,255,0,0.5)"
+              ]
+            }]
+          }
+        });
+
+        labels = ["Total Tasks", "Active Tasks", "Completed Tasks"];
+        data = [totalTasks, activeTasks, completedTasks];
+
+        var tasksAC = new Chart(chartTasksAC, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Number of Tasks",
+              data: data,
+              backgroundColor: [
+                "rgba(0,0,255,0.5)",
+                "rgba(255,0,0,0.5)",
+                "rgba(0,255,0,0.5)"
+              ]
+            }]
+          }
+        });
+
+        activeTasks = ((activeTasks/totalTasks) * 100).toFixed(2);
+        completedTasks = ((completedTasks/totalTasks) * 100).toFixed(2);
+
+        labels = ["Active Tasks", "Completed Tasks"];
+        data = [activeTasks, completedTasks];
+
+        var progressTasks = new Chart(chartProgressTasks, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: [
+                "rgba(255,0,0,0.5)",
+                "rgba(0,255,0,0.5)"
+              ]
+            }]
+          }
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>
